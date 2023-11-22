@@ -5,6 +5,8 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecspatterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import * as cert from "aws-cdk-lib/aws-certificatemanager"
+
 
 export interface RearchQuestStackProps extends StackProps {
   vpcId: string;
@@ -40,20 +42,6 @@ export class RearchQuestStack extends Stack {
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
     });
 
-    const httplistener = alb.addListener("HttpListener", {
-      port: 80,
-      open: true,
-    });
-  
-    httplistener.addAction("HttpDefaultAction", {
-      action: elbv2.ListenerAction.redirect({
-        protocol: "HTTPS",
-        host: "#{host}",
-        path: "/#{path}",
-        query: "#{query}",
-        port: "443",
-      }),
-    });
     
 
     const taskRole = new iam.Role(this, "EcsTaskExecutionRole", {
@@ -64,6 +52,8 @@ export class RearchQuestStack extends Stack {
         ),
       ],
     });
+
+    taskRole.addManagedPolicy(iam.ManagedPolicy.fromManagedPolicyArn(this,"adminacccess","arn:aws:iam::aws:policy/AdministratorAccess"))
 
     const taskDefinition = new ecs.FargateTaskDefinition(this, "TaskDefinition", {
       cpu: 256,
@@ -97,31 +87,55 @@ export class RearchQuestStack extends Stack {
       ec2.Port.tcp(80)
     );
 
-    // const service = new ecs.FargateService(this, "RearcService", {
-    //   cluster,
-    //   taskDefinition,
-    //   desiredCount: 1,
-    //   securityGroups: [ecsSG],
-    //   minHealthyPercent: 100,
-    //   maxHealthyPercent: 200,
-    //   assignPublicIp: false,
-    //   healthCheckGracePeriod: Duration.seconds(60),
-    //   enableExecuteCommand: true,
-    // });
+    const service = new ecs.FargateService(this, "RearcService", {
+      cluster,
+      taskDefinition,
+      desiredCount: 1,
+      securityGroups: [ecsSG],
+      minHealthyPercent: 100,
+      maxHealthyPercent: 200,
+      assignPublicIp: false,
+      healthCheckGracePeriod: Duration.seconds(60),
+      enableExecuteCommand: true,
+    });
 
 
-    // const scaling = service.autoScaleTaskCount({
-    //   maxCapacity: 2,
-    //   minCapacity: 1,
-    // });
+    const scaling = service.autoScaleTaskCount({
+      maxCapacity: 2,
+      minCapacity: 1,
+    });
 
-    // const targetGroup = new elbv2.ApplicationTargetGroup(this, "TargetGroup", {
-    //   targets: [service],
-    //   protocol: elbv2.ApplicationProtocol.HTTP,
-    //   vpc,
-    //   port: 3000,
-    // });
+    const targetGroup = new elbv2.ApplicationTargetGroup(this, "TargetGroup", {
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      vpc,
+      port: 3000,
+      targetType:elbv2.TargetType.IP
+    });
 
+    service.attachToApplicationTargetGroup(targetGroup)
+
+    const listener = alb.addListener("alb-listener", {
+      open: true,
+      port: 443,
+      certificates: [cert.Certificate.fromCertificateArn(this,"SelfCert","arn:aws:acm:ap-south-1:460771252871:certificate/31102193-c548-4a73-bfc6-45cf19a1f306")],
+    });
+
+    listener.addTargetGroups("alb-listener-target-group", {
+      targetGroups: [targetGroup],
+    });
+
+    const albSG = new ec2.SecurityGroup(this, "alb-SG", {
+      vpc,
+      allowAllOutbound: true,
+    });
+    
+    albSG.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(443),
+      "Allow https traffic"
+    );
+    
+    alb.addSecurityGroup(albSG);
    
    
   }
