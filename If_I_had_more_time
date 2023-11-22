@@ -1,0 +1,12 @@
+Few Things I would do different if I had more time.
+
+
+1. I would definitely choose terraform over CDK. Since I have been working with CDK recently, I was more comfortable with CDK but terraform provides a lot more flexibility. While CDK can help do the heavy lifting in terms of creating the missing resources and adding the required default permissions, it allows the engineer to oversee the resources that was created, hence adding an overhead incase of troubleshooting or auditing. 
+2. CDKTF is better vs terraform HCL because it allows all developers to work and commit the code. 
+3. I would take the environment variables from secrets manager or ssm parameter.
+4. I would build the docker in both x86 and arm architecture to allow for wide range of instance types ( cheaper graviton instances too. )
+5. I would create the IAM policies and roles with least permissions and only allow ecr pull permission to the taskdefinition role.
+6. I would separate the stacks that create the base app infra ( cluster,alb, sg) and the service itself to breakdown the deployments, allowing more flexible iterations. 
+7. I would add a cloudfront in the front and WAF to protect all networks. 
+8. I would allow specific ips only with the security groups. and also have private subnets to host the application itself. Only the alb would reside in the public subnet. 
+9

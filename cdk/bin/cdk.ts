@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
-import { RearchQuestStack } from "../lib/cdk-stack";
+import { RearcQuestStack } from "../lib/cdk-stack";
 import { Tags } from "aws-cdk-lib";
 
 const app = new cdk.App();
 
-new RearchQuestStack(app, "rearch-quest", {
+new RearcQuestStack(app, "rearch-quest", {
   env: {
     account: "460771252871",
     region: "ap-south-1",
